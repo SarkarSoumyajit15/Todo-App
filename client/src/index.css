@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-background;
+}
+
+.todo-item {
+  @apply bg-white rounded-lg shadow-sm p-4 mb-4 border border-gray-100;
+}
+
+.tag {
+  @apply text-xs px-2 py-1 rounded-full mr-2;
+}
+
+.tag-high {
+  @apply bg-tag-high text-red-700;
+}
+
+.tag-medium {
+  @apply bg-tag-medium text-yellow-700;
+}
+
+.tag-low {
+  @apply bg-tag-low text-blue-700;
+}
+
+.tag-work {
+  @apply bg-tag-work text-indigo-700;
+}
+
+.tag-coding {
+  @apply bg-tag-coding text-blue-700;
+}
+
+.btn {
+  @apply px-4 py-2 rounded-md text-white font-medium;
+}
+
+.btn-primary {
+  @apply bg-primary hover:bg-indigo-700;
+}
+
+.checkbox {
+  @apply h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary;
+}

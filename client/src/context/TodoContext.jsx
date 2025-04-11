@@ -7,6 +7,15 @@ const TodoContext = createContext();
 export const useTodoContext = () => useContext(TodoContext);
 
 export const TodoProvider = ({ children }) => {
+
+// Initial mock User data
+  const users = [
+    { id: 1, name: 'John Doe', username: 'john_doe', avatar: 'https://ui-avatars.com/api/?name=John+Doe' },
+    { id: 2, name: 'Jane Smith', username: 'jane_smith', avatar: 'https://ui-avatars.com/api/?name=Jane+Smith' },
+    { id: 3, name: 'Bob Johnson', username: 'bob_johnson', avatar: 'https://ui-avatars.com/api/?name=Bob+Johnson' },
+    { id: 4, name: 'Alice Brown', username: 'alice_brown', avatar: 'https://ui-avatars.com/api/?name=Alice+Brown' },
+    { id: 5, name: 'Charlie Davis', username: 'charlie_davis', avatar: 'https://ui-avatars.com/api/?name=Charlie+Davis' },
+  ];
   // Initial mock data for todos
   const initialTodos = [
     {

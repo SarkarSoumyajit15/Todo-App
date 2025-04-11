@@ -3,6 +3,7 @@ import { useTodoContext } from '../context/TodoContext';
 import TodoItem from './TodoItem';
 import AddTodoModal from './AddTodoModal';
 import TodoDetailModal from './TodoDetailModal';
+import EditTodoDialog from './EditTodoDialog'; // Add this import
 
 const TodoList = ({ currentUser }) => {
   const { todos, filters, sortOption, setSortOption } = useTodoContext();
@@ -10,6 +11,9 @@ const TodoList = ({ currentUser }) => {
   const [selectedTodo, setSelectedTodo] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  // Add these new state variables for edit functionality
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [currentEditTodo, setCurrentEditTodo] = useState(null);
   
   const itemsPerPage = 10;
 
@@ -66,6 +70,12 @@ const TodoList = ({ currentUser }) => {
     setSelectedTodo(null);
   };
 
+  // Add this function to handle opening the edit dialog
+  const handleOpenEditDialog = (todo) => {
+    setCurrentEditTodo(todo);
+    setEditDialogOpen(true);
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -112,6 +122,7 @@ const TodoList = ({ currentUser }) => {
               key={todo.id} 
               todo={todo} 
               onOpenDetail={() => handleOpenTodoDetail(todo)}
+              onEdit={handleOpenEditDialog} // Add this prop
               currentUser={currentUser}
             />
           ))
@@ -164,6 +175,15 @@ const TodoList = ({ currentUser }) => {
           todo={selectedTodo} 
           onClose={handleCloseTodoDetail}
           currentUser={currentUser}
+        />
+      )}
+      
+      {/* Add the EditTodoDialog component */}
+      {editDialogOpen && currentEditTodo && (
+        <EditTodoDialog
+          open={editDialogOpen}
+          handleClose={() => setEditDialogOpen(false)}
+          todo={currentEditTodo}
         />
       )}
     </div>

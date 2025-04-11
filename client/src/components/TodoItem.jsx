@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTodoContext } from '../context/TodoContext';
 
-const TodoItem = ({ todo, onOpenDetail, currentUser }) => {
+const TodoItem = ({ todo, onOpenDetail, onEdit, currentUser }) => {
   const { toggleTodoComplete, deleteTodo } = useTodoContext();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
@@ -18,7 +18,7 @@ const TodoItem = ({ todo, onOpenDetail, currentUser }) => {
   
   const handleEdit = (e) => {
     e.stopPropagation();
-    onOpenDetail();
+    onEdit(todo); // Call onEdit with the todo object
     setIsMenuOpen(false);
   };
   

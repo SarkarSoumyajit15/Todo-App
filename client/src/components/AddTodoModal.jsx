@@ -1,37 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTodoContext } from '../context/TodoContext';
 
-const AddTodoModal = ({ onClose, todo = null, currentUser }) => {
-  const { addTodo, updateTodo } = useTodoContext();
-  const isEditing = !!todo;
+const AddTodoModal = ({ onClose, currentUser, isEditing = false, todo = null }) => {
+  const { addTodo, updateTodo, users, tags: availableTags } = useTodoContext();
   
   const [title, setTitle] = useState(todo?.title || '');
   const [description, setDescription] = useState(todo?.description || '');
+  const [dueDate, setDueDate] = useState(todo?.dueDate || '');
   const [priority, setPriority] = useState(todo?.priority || 'Medium');
-  const [selectedTags, setSelectedTags] = useState(todo?.tags.map(tag => tag.id) || []);
+  const [selectedTags, setSelectedTags] = useState(todo?.tags?.map(tag => tag.id) || []);
+  
   const [mentionText, setMentionText] = useState('');
   const [mentions, setMentions] = useState(todo?.mentions || []);
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
   
   const modalRef = useRef(null);
   
-  // Mock available tags
-  const availableTags = [
-    { id: 1, name: 'work', color: 'bg-tag-work text-indigo-700' },
-    { id: 2, name: 'coding', color: 'bg-tag-coding text-blue-700' },
-    { id: 3, name: 'personal', color: 'bg-purple-100 text-purple-700' },
-    { id: 4, name: 'health', color: 'bg-green-100 text-green-700' },
-    { id: 5, name: 'shopping', color: 'bg-pink-100 text-pink-700' },
-  ];
-  
-  // Mock users for mentions
-  const users = [
-    { id: 1, name: 'John Doe', username: 'john_doe', avatar: 'https://ui-avatars.com/api/?name=John+Doe' },
-    { id: 2, name: 'Jane Smith', username: 'jane_smith', avatar: 'https://ui-avatars.com/api/?name=Jane+Smith' },
-    { id: 3, name: 'Bob Johnson', username: 'bob_johnson', avatar: 'https://ui-avatars.com/api/?name=Bob+Johnson' },
-    { id: 4, name: 'Alice Brown', username: 'alice_brown', avatar: 'https://ui-avatars.com/api/?name=Alice+Brown' },
-    { id: 5, name: 'Charlie Davis', username: 'charlie_davis', avatar: 'https://ui-avatars.com/api/?name=Charlie+Davis' },
-  ];
+  // Remove the redeclarations of availableTags and users
+  // Use the ones from context directly
   
   // Filter users based on mention text
   const filteredUsers = users.filter(user => 

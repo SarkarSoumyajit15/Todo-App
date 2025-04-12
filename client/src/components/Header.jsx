@@ -18,7 +18,7 @@ const Header = ({ currentUser, setCurrentUser }) => {
   };
 
   return (
-    <header className="bg-white shadow-sm py-4 px-6 flex justify-between items-center">
+    <header className="bg-white shadow-sm py-4 px-6 flex justify-between items-center sticky top-0 z-10">
       <h1 className="text-2xl font-bold text-gray-800">Todo List</h1>
       <div className="flex items-center space-x-4">
         <button 

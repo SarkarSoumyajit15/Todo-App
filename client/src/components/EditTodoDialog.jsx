@@ -31,20 +31,19 @@ const MenuProps = {
 };
 
 const EditTodoDialog = ({ open, handleClose, todo }) => {
-  const { updateTodo } = useTodoContext();
+  const { updateTodo, users: contextUsers, tags: availableContextTags } = useTodoContext();
   
   // Initialize state with todo data
-  console.log(todo);
   const [title, setTitle] = useState(todo?.title || '');
   const [description, setDescription] = useState(todo?.description || '');
   const [dueDate, setDueDate] = useState(todo?.dueDate ? parseISO(todo.dueDate) : null);
   const [priority, setPriority] = useState(todo?.priority || 'Low');
   const [status, setStatus] = useState(todo?.status || 'Pending');
-  // Update to use mentions instead of assignedUsers
-  const [mentions, setMentions] = useState(todo?.mentions?.map(user => user.name || user) || []);
-  const [tags, setTags] = useState(todo?.tags?.map(tag => tag.name || tag) || []);
-  const [users, setUsers] = useState([]);
-  const [availableTags, setAvailableTags] = useState([]);
+  // Keep mentions as an array of objects
+  const [mentions, setMentions] = useState(todo?.mentions || []);
+  const [tags, setTags] = useState(todo?.tags || []);
+  const [users, setUsers] = useState(contextUsers || []);
+  const [availableTags, setAvailableTags] = useState(availableContextTags || []);
   
   // Update state when todo changes
   useEffect(() => {
@@ -54,37 +53,20 @@ const EditTodoDialog = ({ open, handleClose, todo }) => {
       setDueDate(todo.dueDate ? parseISO(todo.dueDate) : null);
       setPriority(todo.priority || 'Low');
       setStatus(todo.status || 'Pending');
-      // Update to use mentions
-      setMentions(todo.mentions?.map(user => typeof user === 'object' ? user.name : user) || []);
-      setTags(todo.tags?.map(tag => typeof tag === 'object' ? tag.name : tag) || []);
+      setMentions(todo.mentions || []);
+      setTags(todo.tags || []);
     }
   }, [todo]);
   
-  // Fetch users and tags
+  // Update users and tags from context
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch users
-        const usersResponse = await fetch('http://localhost:5000/api/users', {
-          credentials: 'include'
-        });
-        const usersData = await usersResponse.json();
-        setUsers(usersData);
-        
-        // Fetch tags
-        const tagsResponse = await fetch('http://localhost:5000/api/tags', {
-          credentials: 'include'
-        });
-        const tagsData = await tagsResponse.json();
-        setAvailableTags(tagsData);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
-    };
-    
-    fetchData();
-  }, []);
+    setUsers(contextUsers);
+    setAvailableTags(availableContextTags);
+  }, [contextUsers, availableContextTags]);
   
+  // Remove the fetch effect since we're using context data
+  
+  // Update handleSubmit to keep mentions as objects
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -95,20 +77,26 @@ const EditTodoDialog = ({ open, handleClose, todo }) => {
       dueDate: dueDate ? format(dueDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx") : null,
       priority,
       status,
-      // Update to use mentions
-      mentions,
-      tags: tags.map(tagId => {
-        const tag = availableTags.find(t => t.id === tagId);
-        return tag || { id: tagId };
-      })
+      mentions, // Keep as is since it's already an array of objects
+      tags // Keep as is since it's already an array of objects
     };
     
     try {
-      await updateTodo(updatedTodo);
+      updateTodo(updatedTodo);
       handleClose();
     } catch (error) {
       console.error('Error updating todo:', error);
     }
+  };
+  
+  // Update the remove handlers to work with objects
+  const handleRemoveMention = (userId) => {
+    console.log("Removing mention with ID:", userId); // Debugging line
+    setMentions(mentions.filter(mention => mention.id !== userId));
+  };
+  
+  const handleRemoveTag = (tagId) => {
+    setTags(tags.filter(tag => tag.id !== tagId));
   };
   
   return (
@@ -176,20 +164,41 @@ const EditTodoDialog = ({ open, handleClose, todo }) => {
             </Select>
           </FormControl>
           
+
           <FormControl fullWidth margin="dense" sx={{ marginBottom: 2 }}>
             <InputLabel id="mentions-label">Mentioned Users</InputLabel>
             <Select
               labelId="mentions-label"
               multiple
-              value={mentions}
-              onChange={(e) => setMentions(e.target.value)}
+              value={mentions.map(mention => mention.id)}
+              onChange={(e) => {
+                const selectedIds = e.target.value;
+                const newMentions = selectedIds.map(id => {
+                  const existingMention = mentions.find(m => m.id === id);
+                  if (existingMention) return existingMention;
+                  
+                  const user = users.find(u => u.id === id);
+                  return user || { id };
+                });
+                setMentions(newMentions);
+              }}
               input={<OutlinedInput id="select-mentions" label="Mentioned Users" />}
               renderValue={(selected) => (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                   {selected.map((userId) => {
-                    const user = users.find(u => u.id === userId);
+                    const mention = mentions.find(m => m.id === userId);
                     return (
-                      <Chip key={userId} label={user ? user.username : userId} />
+                      <Chip 
+                        key={userId} 
+                        label={mention?.username || mention?.name || userId}
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                        }}
+                        onDelete={(e) => {
+                          e && e.stopPropagation();
+                          handleRemoveMention(userId);
+                        }}
+                      />
                     );
                   })}
                 </Box>
@@ -198,31 +207,49 @@ const EditTodoDialog = ({ open, handleClose, todo }) => {
             >
               {users.map((user) => (
                 <MenuItem key={user.id} value={user.id}>
-                  {user.username}
+                  {user.username || user.name}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
+          
           
           <FormControl fullWidth margin="dense" sx={{ marginBottom: 2 }}>
             <InputLabel id="tags-label">Tags</InputLabel>
             <Select
               labelId="tags-label"
               multiple
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
+              value={tags.map(tag => tag.id)}
+              onChange={(e) => {
+                const selectedIds = e.target.value;
+                const newTags = selectedIds.map(id => {
+                  const existingTag = tags.find(t => t.id === id);
+                  if (existingTag) return existingTag;
+                  
+                  const tag = availableTags.find(t => t.id === id);
+                  return tag || { id };
+                });
+                setTags(newTags);
+              }}
               input={<OutlinedInput id="select-tags" label="Tags" />}
               renderValue={(selected) => (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                   {selected.map((tagId) => {
-                    const tag = availableTags.find(t => t.id === tagId);
+                    const tag = tags.find(t => t.id === tagId);
                     return (
                       <Chip 
                         key={tagId} 
-                        label={tag ? tag.name : tagId}
+                        label={tag?.name || tagId}
                         style={{
                           backgroundColor: tag?.color || '#e0e0e0',
                           color: tag?.textColor || '#000'
+                        }}
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                        }}
+                        onDelete={(e) => {
+                          e && e.stopPropagation();
+                          handleRemoveTag(tagId);
                         }}
                       />
                     );

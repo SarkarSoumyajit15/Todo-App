@@ -1,142 +1,177 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
-// Create context
 const TodoContext = createContext();
 
-// Custom hook to use the todo context
-export const useTodoContext = () => useContext(TodoContext);
+// Mock users data
+const mockUsers = [
+  { id: '1', username: 'john_doe', name: 'John Doe', email: 'john@example.com', avatar: 'https://randomuser.me/api/portraits/men/1.jpg' },
+  { id: '2', username: 'jane_smith', name: 'Jane Smith', email: 'jane@example.com', avatar: 'https://randomuser.me/api/portraits/women/2.jpg' },
+  { id: '3', username: 'alex_wilson', name: 'Alex Wilson', email: 'alex@example.com', avatar: 'https://randomuser.me/api/portraits/men/3.jpg' },
+  { id: '4', username: 'emily_brown', name: 'Emily Brown', email: 'emily@example.com', avatar: 'https://randomuser.me/api/portraits/women/4.jpg' },
+  { id: '5', username: 'michael_davis', name: 'Michael Davis', email: 'michael@example.com', avatar: 'https://randomuser.me/api/portraits/men/5.jpg' },
+];
+
+// Mock tags data
+const mockTags = [
+  { id: '1', name: 'Work', color: '#FF5733', textColor: '#FFFFFF' },
+  { id: '2', name: 'Personal', color: '#33FF57', textColor: '#000000' },
+  { id: '3', name: 'Urgent', color: '#FF3333', textColor: '#FFFFFF' },
+  { id: '4', name: 'Later', color: '#3357FF', textColor: '#FFFFFF' },
+  { id: '5', name: 'Ideas', color: '#F3FF33', textColor: '#000000' },
+];
 
 export const TodoProvider = ({ children }) => {
-
-// Initial mock User data
-  const users = [
-    { id: 1, name: 'John Doe', username: 'john_doe', avatar: 'https://ui-avatars.com/api/?name=John+Doe' },
-    { id: 2, name: 'Jane Smith', username: 'jane_smith', avatar: 'https://ui-avatars.com/api/?name=Jane+Smith' },
-    { id: 3, name: 'Bob Johnson', username: 'bob_johnson', avatar: 'https://ui-avatars.com/api/?name=Bob+Johnson' },
-    { id: 4, name: 'Alice Brown', username: 'alice_brown', avatar: 'https://ui-avatars.com/api/?name=Alice+Brown' },
-    { id: 5, name: 'Charlie Davis', username: 'charlie_davis', avatar: 'https://ui-avatars.com/api/?name=Charlie+Davis' },
-  ];
-  // Initial mock data for todos
-  const initialTodos = [
-    {
-      id: 1,
-      title: 'Complete the todo app assignment',
-      description: 'Implement all required features for the todo application',
-      priority: 'High',
-      tags: [
-        { id: 1, name: 'work', color: 'bg-tag-work text-indigo-700' },
-        { id: 2, name: 'coding', color: 'bg-tag-coding text-blue-700' }
-      ],
-      mentions: [
-        { id: 5, name: 'Charlie Davis', username: 'charlie_davis', avatar: 'https://ui-avatars.com/api/?name=Charlie+Davis' }
-      ],
-      completed: false,
-      createdAt: '2023-05-15T10:30:00Z',
-      createdBy: { id: 1, name: 'John Doe', username: 'john_doe', avatar: 'https://ui-avatars.com/api/?name=John+Doe' },
-      notes: [
-        {
-          id: 101,
-          text: 'Started working on the frontend components',
-          createdAt: '2023-05-16T14:20:00Z',
-          createdBy: { id: 1, name: 'John Doe', username: 'john_doe', avatar: 'https://ui-avatars.com/api/?name=John+Doe' }
-        }
-      ]
-    },
-    {
-      id: 2,
-      title: 'Design the database schema',
-      description: 'Create MongoDB schema for the todo application',
-      priority: 'Medium',
-      tags: [
-        { id: 2, name: 'coding', color: 'bg-tag-coding text-blue-700' }
-      ],
-      mentions: [],
-      completed: true,
-      createdAt: '2023-05-14T09:15:00Z',
-      createdBy: { id: 1, name: 'John Doe', username: 'john_doe', avatar: 'https://ui-avatars.com/api/?name=John+Doe' },
-      notes: []
-    },
-    {
-      id: 3,
-      title: 'Implement user authentication',
-      description: 'Add user login and registration functionality',
-      priority: 'Low',
-      tags: [
-        { id: 1, name: 'work', color: 'bg-tag-work text-indigo-700' },
-        { id: 3, name: 'personal', color: 'bg-purple-100 text-purple-700' }
-      ],
-      mentions: [
-        { id: 2, name: 'Jane Smith', username: 'jane_smith', avatar: 'https://ui-avatars.com/api/?name=Jane+Smith' }
-      ],
-      completed: false,
-      createdAt: '2023-05-13T15:45:00Z',
-      createdBy: { id: 1, name: 'John Doe', username: 'john_doe', avatar: 'https://ui-avatars.com/api/?name=John+Doe' },
-      notes: []
-    }
-  ];
-
-  // State
+  // Initialize todos from localStorage or use mock data
   const [todos, setTodos] = useState(() => {
     const savedTodos = localStorage.getItem('todos');
-    return savedTodos ? JSON.parse(savedTodos) : initialTodos;
+    if (savedTodos) {
+      return JSON.parse(savedTodos);
+    }
+    return [];
   });
   
-  const [filters, setFilters] = useState({
-    priorities: { High: false, Medium: false, Low: false },
-    tags: []
+  // Initialize users from localStorage or use mock data
+  const [users, setUsers] = useState(() => {
+    const savedUsers = localStorage.getItem('users');
+    if (savedUsers) {
+      return JSON.parse(savedUsers);
+    }
+    return mockUsers;
   });
   
-  const [sortOption, setSortOption] = useState('date-desc');
-
+  // Initialize tags from localStorage or use mock data
+  const [tags, setTags] = useState(() => {
+    const savedTags = localStorage.getItem('tags');
+    if (savedTags) {
+      return JSON.parse(savedTags);
+    }
+    return mockTags;
+  });
+  
   // Save todos to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('todos', JSON.stringify(todos));
   }, [todos]);
-
+  
+  // Save users to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('users', JSON.stringify(users));
+  }, [users]);
+  
+  // Save tags to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('tags', JSON.stringify(tags));
+  }, [tags]);
+  
+  // Filter state
+  const [filters, setFilters] = useState({
+    priorities: {
+      Low: false,
+      Medium: false,
+      High: false
+    },
+    tags: []
+  });
+  
+  // Sort option state
+  const [sortOption, setSortOption] = useState('date-desc');
+  
   // Add a new todo
-  const addTodo = (todoData) => {
+  const addTodo = (todo) => {
     const newTodo = {
-      id: Date.now(),
-      ...todoData
+      ...todo,
+      id: uuidv4(),
+      createdAt: new Date().toISOString(),
+      completed: false
     };
-    setTodos([newTodo, ...todos]);
+    setTodos([...todos, newTodo]);
   };
-
+  
   // Update an existing todo
-  const updateTodo = (id, updatedData) => {
+  const updateTodo = (updatedTodo) => {
     setTodos(todos.map(todo => 
-      todo.id === id ? { ...todo, ...updatedData } : todo
+      todo.id === updatedTodo.id ? updatedTodo : todo
     ));
   };
-
+  
   // Delete a todo
   const deleteTodo = (id) => {
     setTodos(todos.filter(todo => todo.id !== id));
   };
-
+  
   // Toggle todo completion status
   const toggleTodoComplete = (id) => {
     setTodos(todos.map(todo => 
       todo.id === id ? { ...todo, completed: !todo.completed } : todo
     ));
   };
-
-  // Context value
-  const value = {
-    todos,
-    filters,
-    setFilters,
-    sortOption,
-    setSortOption,
-    addTodo,
-    updateTodo,
-    deleteTodo,
-    toggleTodoComplete
+  
+  // Add a new user
+  const addUser = (user) => {
+    const newUser = {
+      ...user,
+      id: uuidv4()
+    };
+    setUsers([...users, newUser]);
   };
-
+  
+  // Update an existing user
+  const updateUser = (updatedUser) => {
+    setUsers(users.map(user => 
+      user.id === updatedUser.id ? updatedUser : user
+    ));
+  };
+  
+  // Delete a user
+  const deleteUser = (id) => {
+    setUsers(users.filter(user => user.id !== id));
+  };
+  
+  // Add a new tag
+  const addTag = (tag) => {
+    const newTag = {
+      ...tag,
+      id: uuidv4()
+    };
+    setTags([...tags, newTag]);
+  };
+  
+  // Update an existing tag
+  const updateTag = (updatedTag) => {
+    setTags(tags.map(tag => 
+      tag.id === updatedTag.id ? updatedTag : tag
+    ));
+  };
+  
+  // Delete a tag
+  const deleteTag = (id) => {
+    setTags(tags.filter(tag => tag.id !== id));
+  };
+  
   return (
-    <TodoContext.Provider value={value}>
+    <TodoContext.Provider value={{
+      todos,
+      users,
+      tags,
+      filters,
+      setFilters,
+      sortOption,
+      setSortOption,
+      addTodo,
+      updateTodo,
+      deleteTodo,
+      toggleTodoComplete,
+      addUser,
+      updateUser,
+      deleteUser,
+      addTag,
+      updateTag,
+      deleteTag
+    }}>
       {children}
     </TodoContext.Provider>
   );
 };
+
+export const useTodoContext = () => useContext(TodoContext);

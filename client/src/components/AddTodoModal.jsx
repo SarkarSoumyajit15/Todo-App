@@ -1,23 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTodoContext } from '../context/TodoContext';
+import { useTagContext } from '../context/TagContext';
 
 const AddTodoModal = ({ onClose, currentUser, isEditing = false, todo = null }) => {
-  const { addTodo, updateTodo, users, tags: availableTags } = useTodoContext();
+  const { addTodo, updateTodo, users ,  } = useTodoContext();
+  const { createTag , tags } = useTagContext();
   
   const [title, setTitle] = useState(todo?.title || '');
   const [description, setDescription] = useState(todo?.description || '');
   const [dueDate, setDueDate] = useState(todo?.dueDate || '');
   const [priority, setPriority] = useState(todo?.priority || 'Medium');
-  const [selectedTags, setSelectedTags] = useState(todo?.tags?.map(tag => tag.id) || []);
+  const [selectedTags, setSelectedTags] = useState(todo?.tags?.map(tag => tag._id) || []);
+  
+  // For new tag creation
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#e0e0e0');
+  const [showTagForm, setShowTagForm] = useState(false);
   
   const [mentionText, setMentionText] = useState('');
   const [mentions, setMentions] = useState(todo?.mentions || []);
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
   
   const modalRef = useRef(null);
-  
-  // Remove the redeclarations of availableTags and users
-  // Use the ones from context directly
   
   // Filter users based on mention text
   const filteredUsers = users.filter(user => 
@@ -47,7 +51,7 @@ const AddTodoModal = ({ onClose, currentUser, isEditing = false, todo = null }) 
   };
   
   const handleAddMention = (user) => {
-    if (!mentions.some(m => m.id === user.id)) {
+    if (!mentions.some(m => m._id === user._id)) {
       setMentions([...mentions, user]);
     }
     setMentionText('');
@@ -55,27 +59,45 @@ const AddTodoModal = ({ onClose, currentUser, isEditing = false, todo = null }) 
   };
   
   const handleRemoveMention = (userId) => {
-    setMentions(mentions.filter(mention => mention.id !== userId));
+    setMentions(mentions.filter(mention => mention._id !== userId));
+  };
+  
+  const handleCreateTag = async () => {
+    if (!newTagName.trim()) return;
+    
+    try {
+      // Assuming your TodoContext has a createTag function
+      const newTag = await createTag({
+        name: newTagName.trim(),
+        color: newTagColor
+      });
+      
+      // Add the new tag to selected tags
+      setSelectedTags([...selectedTags, newTag._id]);
+      
+      // Reset form
+      setNewTagName('');
+      setNewTagColor('#e0e0e0');
+      setShowTagForm(false);
+    } catch (error) {
+      console.error('Failed to create tag:', error);
+    }
   };
   
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    const selectedTagObjects = availableTags.filter(tag => selectedTags.includes(tag.id));
-    
     const todoData = {
       title,
       description,
       priority,
-      tags: selectedTagObjects,
-      mentions,
-      completed: todo?.completed || false,
-      createdAt: todo?.createdAt || new Date().toISOString(),
-      createdBy: todo?.createdBy || currentUser,
+      dueDate: dueDate || undefined,
+      tags: selectedTags, // Just send the tag IDs
+      mentions: mentions.map(user => user._id), // Just send the user IDs
     };
     
-    if (isEditing) {
-      updateTodo(todo.id, todoData);
+    if (isEditing && todo?._id) {
+      updateTodo(todo._id, todoData);
     } else {
       addTodo(todoData);
     }
@@ -133,6 +155,19 @@ const AddTodoModal = ({ onClose, currentUser, isEditing = false, todo = null }) 
             </div>
             
             <div className="mb-4">
+              <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-1">
+                Due Date
+              </label>
+              <input
+                type="date"
+                id="dueDate"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
+            
+            <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Priority
               </label>
@@ -153,21 +188,88 @@ const AddTodoModal = ({ onClose, currentUser, isEditing = false, todo = null }) 
               </div>
             </div>
             
-            <div className="mb-4">
+            {/* <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tags
               </label>
               <div className="flex flex-wrap gap-2">
-                {availableTags.map(tag => (
+                {tags && tags.map(tag => (
                   <button
-                    key={tag.id}
+                    key={tag._id}
                     type="button"
-                    onClick={() => handleTagToggle(tag.id)}
+                    onClick={() => handleTagToggle(tag._id)}
                     className={`px-3 py-1 rounded-full text-sm ${
-                      selectedTags.includes(tag.id)
-                        ? tag.color
+                      selectedTags.includes(tag._id)
+                        ? 'bg-primary text-white'
                         : 'bg-gray-100 text-gray-700'
                     }`}
+                    style={selectedTags.includes(tag._id) ? {
+                      backgroundColor: tag.color || '#e0e0e0',
+                      color: tag.textColor || '#000000'
+                    } : {}}
+                  >
+                    {tag.name}
+                  </button>
+                ))}
+              </div>
+            </div> */}
+            
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Tags
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowTagForm(!showTagForm)}
+                  className="text-sm text-primary hover:text-primary-dark"
+                >
+                  {showTagForm ? 'Cancel' : '+ New Tag'}
+                </button>
+              </div>
+              
+              {showTagForm && (
+                <div className="mb-3 p-3 border border-gray-200 rounded-md">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder="Tag name"
+                      className="flex-1 px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                    />
+                    <input
+                      type="color"
+                      className="h-8 w-8 border-0 p-0 cursor-pointer"
+                      value={newTagColor}
+                      onChange={(e) => setNewTagColor(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCreateTag}
+                    className="w-full px-3 py-1 bg-primary text-white rounded-md hover:bg-primary-dark text-sm"
+                  >
+                    Create Tag
+                  </button>
+                </div>
+              )}
+              
+              <div className="flex flex-wrap gap-2">
+                {tags && tags.map(tag => (
+                  <button
+                    key={tag._id}
+                    type="button"
+                    onClick={() => handleTagToggle(tag._id)}
+                    className={`px-3 py-1 rounded-full text-sm ${
+                      selectedTags.includes(tag._id)
+                        ? 'bg-primary text-white'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}
+                    style={selectedTags.includes(tag._id) ? {
+                      backgroundColor: tag.color || '#e0e0e0',
+                      color: tag.textColor || '#000000'
+                    } : {}}
                   >
                     {tag.name}
                   </button>

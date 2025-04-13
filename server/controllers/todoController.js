@@ -1,36 +1,99 @@
-// const Todo = require('../models/Todo');
-// const User = require('../models/User');
-// const Tag = require('../models/Tag');
-// const AppError = require('../utils/appError');
-// const catchAsync = require('../utils/catchAsync');
+
 
 import Todo from '../models/Todo.js';
 import User from '../models/User.js';
 import Tag from '../models/Tag.js';
 import AppError from '../utils/appError.js';
 import catchAsync from '../utils/catchAsync.js';
+import mongoose from 'mongoose';
+
+
+
+
+
 
 
 // Get all todos for the current user (created by them or where they're mentioned)
-const getAllTodos = catchAsync(async (req, res, next) => {
-  const todos = await Todo.find({
-    $or: [
-      { createdBy: req.user._id },
-      { mentions: req.user._id }
-    ]
-  })
-  .populate('createdBy', 'name username avatar')
-  .populate('mentions', 'name username avatar')
-  .populate('tags', 'name color textColor');
-  
-  res.status(200).json({
-    status: 'success',
-    results: todos.length,
-    data: {
-      todos
+// Add this function to your todoController.js file
+
+const getAllTodos = async (req, res) => {
+    try {
+      // Extract query parameters
+      const { userId , priority, tags, search, status } = req.query;
+
+      // convert the userId to mongoose.Schema.Types.ObjectId
+      console.log(userId);
+      console.log(req.user._id);
+      
+      if(userId && req.user._id.toString() !== userId){
+        const userIdObjectId = new mongoose.Types.ObjectId(userId);
+        req.user = await User.findById(userIdObjectId);
+      }
+      
+        // Check if user exists
+        if (!req.user) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'User not found'
+            });
+        }
+
+      // Build filter object
+      const filter = { $or: [
+        { createdBy: req.user._id }, 
+        { mentions: req.user._id }
+      ] };
+      
+      // Handle priority filters (can be multiple)
+      if (priority) {
+        filter.priority = Array.isArray(priority) ? { $in: priority } : priority;
+      }
+      
+      // Handle tag filters (can be multiple)
+      if (tags) {
+        filter.tags = Array.isArray(tags) 
+          ? { $in: tags } 
+          : tags;
+      }
+      
+      // Handle status filter
+    //   if (status) {
+    //     if (status === 'completed') {
+    //       filter.completed = true;
+    //     } else if (status === 'active') {
+    //       filter.completed = false;
+    //     }
+    //   }
+      
+      // Handle search term (search in title and description)
+    //   if (search) {
+    //     filter.$or = [
+    //       { title: { $regex: search, $options: 'i' } },
+    //       { description: { $regex: search, $options: 'i' } }
+    //     ];
+    //   }
+      
+      // Find todos with filters
+      const todos = await Todo.find(filter)
+        .populate('tags')
+        .populate('mentions', 'name email')
+        .sort({ createdAt: -1 });
+      
+      res.status(200).json({
+        status: 'success',
+        results: todos.length,
+        data: {
+          todos
+        }
+      });
+    } catch (err) {
+      res.status(400).json({
+        status: 'fail',
+        message: err.message
+      });
     }
-  });
-});
+  };
+
 
 // Get a single todo
 const getTodo = catchAsync(async (req, res, next) => {
@@ -117,10 +180,13 @@ const updateTodo = catchAsync(async (req, res, next) => {
     // Find users by usernames or IDs
     const mentionedUsers = await User.find({
       $or: [
-        { _id: { $in: req.body.mentions } },
-        { username: { $in: req.body.mentions.map(m => m.replace('@', '')) } }
+        { _id: { $in: req.body.mentions.map(m => m._id) } },
+        { username: { $in: req.body.mentions.map(m => m.username) } }
       ]
     });
+
+     // Extract mentioned user IDs
+     const mentionedIds = mentionedUsers.map(user => user._id.toString());
     
     req.body.mentions = mentionedUsers.map(user => user._id);
     
@@ -132,7 +198,7 @@ const updateTodo = catchAsync(async (req, res, next) => {
     
     // Remove from assigned_todos for users no longer mentioned
     const removedUsers = todo.mentions.filter(
-      id => !req.body.mentions.includes(id.toString())
+      id => !mentionedIds.includes(id.toString())
     );
     
     if (removedUsers.length > 0) {

@@ -1,6 +1,4 @@
-// const Tag = require('../models/Tag');
-// const AppError = require('../utils/appError');
-// const catchAsync = require('../utils/catchAsync');
+
 
 import Tag from '../models/Tag.js';
 import catchAsync from '../utils/catchAsync.js';

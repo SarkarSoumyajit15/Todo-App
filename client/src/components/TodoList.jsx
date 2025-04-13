@@ -1,66 +1,59 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useTodoContext } from '../context/TodoContext';
 import TodoItem from './TodoItem';
 import AddTodoModal from './AddTodoModal';
 import TodoDetailModal from './TodoDetailModal';
-import EditTodoDialog from './EditTodoDialog'; // Add this import
+import EditTodoDialog from './EditTodoDialog';
 
-const TodoList = ({ currentUser }) => {
-  const { todos, filters, sortOption, setSortOption } = useTodoContext();
+const TodoList = ({ limit, showViewAll = false, currentUser }) => {
+  const { todos, loading, error, filters, getFilteredTodos, sortOption, setSortOption } = useTodoContext();
+  const [filteredTodos, setFilteredTodos] = useState([]);
+  const [localLoading, setLocalLoading] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedTodo, setSelectedTodo] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-  // Add these new state variables for edit functionality
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [currentEditTodo, setCurrentEditTodo] = useState(null);
   
   const itemsPerPage = 10;
 
-  // Filter todos based on selected filters and search query
-  const filteredTodos = todos.filter(todo => {
-    // Filter by priority
-    if (Object.values(filters.priorities).some(value => value)) {
-      if (!filters.priorities[todo.priority]) {
-        return false;
+  useEffect(() => {
+    const applyFilters = async () => {
+      setLocalLoading(true);
+      const filtered = await getFilteredTodos();
+      
+      // Apply additional client-side filtering for search
+      let searchFiltered = filtered;
+      if (searchQuery) {
+        searchFiltered = filtered.filter(todo => 
+          todo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (todo.description && todo.description.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
       }
-    }
+      
+      // Sort todos
+      const sorted = [...searchFiltered].sort((a, b) => {
+        if (sortOption === 'date-asc') {
+          return new Date(a.createdAt) - new Date(b.createdAt);
+        } else if (sortOption === 'date-desc') {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        } else if (sortOption === 'priority') {
+          const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
+          return priorityOrder[a.priority] - priorityOrder[b.priority];
+        }
+        return 0;
+      });
+      
+      // Apply limit if specified, otherwise use pagination
+      const limitedTodos = limit ? sorted.slice(0, limit) : sorted;
+      setFilteredTodos(limitedTodos);
+      setLocalLoading(false);
+    };
     
-    // Filter by tags
-    if (filters.tags.length > 0) {
-      if (!todo.tags.some(tag => filters.tags.includes(tag.id))) {
-        return false;
-      }
-    }
-    
-    // Filter by search query
-    if (searchQuery) {
-      return todo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-             todo.description.toLowerCase().includes(searchQuery.toLowerCase());
-    }
-    
-    return true;
-  });
-  
-  // Sort todos
-  const sortedTodos = [...filteredTodos].sort((a, b) => {
-    if (sortOption === 'date-asc') {
-      return new Date(a.createdAt) - new Date(b.createdAt);
-    } else if (sortOption === 'date-desc') {
-      return new Date(b.createdAt) - new Date(a.createdAt);
-    } else if (sortOption === 'priority') {
-      const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
-      return priorityOrder[a.priority] - priorityOrder[b.priority];
-    }
-    return 0;
-  });
-  
-  // Pagination
-  const totalPages = Math.ceil(sortedTodos.length / itemsPerPage);
-  const paginatedTodos = sortedTodos.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+    applyFilters();
+  }, [todos, filters, limit, getFilteredTodos, searchQuery, sortOption]);
 
   const handleOpenTodoDetail = (todo) => {
     setSelectedTodo(todo);
@@ -70,70 +63,98 @@ const TodoList = ({ currentUser }) => {
     setSelectedTodo(null);
   };
 
-  // Add this function to handle opening the edit dialog
   const handleOpenEditDialog = (todo) => {
     setCurrentEditTodo(todo);
     setEditDialogOpen(true);
   };
 
+  // Pagination
+  const totalPages = !limit ? Math.ceil(filteredTodos.length / itemsPerPage) : 1;
+  const paginatedTodos = !limit ? 
+    filteredTodos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage) : 
+    filteredTodos;
+
+  if (loading || localLoading) {
+    return <div className="flex justify-center items-center py-8">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500 py-4">Error: {error}</div>;
+  }
+
+  if (filteredTodos.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6 text-center">
+        <p className="text-gray-500">No tasks found. Create a new task to get started!</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center bg-white border border-gray-300 rounded-md px-4 py-2 text-gray-700 hover:bg-gray-50"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-          </svg>
-          Add Todo
-        </button>
-        
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search todos..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-3 top-2.5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-            </svg>
-          </div>
-          
-          <select
-            className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            value={sortOption}
-            onChange={(e) => setSortOption(e.target.value)}
+      {!limit && (
+        <div className="flex justify-between items-center mb-6">
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center bg-white border border-gray-300 rounded-md px-4 py-2 text-gray-700 hover:bg-gray-50"
           >
-            <option value="date-desc">Newest First</option>
-            <option value="date-asc">Oldest First</option>
-            <option value="priority">Priority</option>
-          </select>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+            </svg>
+            Add Todo
+          </button>
+          
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search todos..."
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-3 top-2.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+              </svg>
+            </div>
+            
+            <select
+              className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+            >
+              <option value="date-desc">Newest First</option>
+              <option value="date-asc">Oldest First</option>
+              <option value="priority">Priority</option>
+            </select>
+          </div>
         </div>
-      </div>
+      )}
       
       <div className="space-y-4">
-        {paginatedTodos.length > 0 ? (
-          paginatedTodos.map(todo => (
-            <TodoItem 
-              key={todo.id} 
-              todo={todo} 
-              onOpenDetail={() => handleOpenTodoDetail(todo)}
-              onEdit={handleOpenEditDialog} // Add this prop
-              currentUser={currentUser}
-            />
-          ))
-        ) : (
-          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-            <p className="text-gray-500">No todos found. Add a new todo or adjust your filters.</p>
+        {paginatedTodos.map(todo => (
+          <TodoItem 
+            key={todo._id} 
+            todo={todo} 
+            onOpenDetail={() => handleOpenTodoDetail(todo)}
+            onEdit={handleOpenEditDialog}
+            currentUser={currentUser}
+          />
+        ))}
+        
+        {showViewAll && todos.length > limit && (
+          <div className="text-center mt-4">
+            <Link 
+              to="/todos" 
+              className="text-primary hover:text-primary-dark font-medium"
+            >
+              View all tasks
+            </Link>
           </div>
         )}
       </div>
       
-      {totalPages > 1 && (
+      {totalPages > 1 && !limit && (
         <div className="flex justify-between items-center mt-6 bg-white p-4 rounded-lg shadow-sm">
           <button
             className="text-gray-600 flex items-center"
@@ -178,7 +199,6 @@ const TodoList = ({ currentUser }) => {
         />
       )}
       
-      {/* Add the EditTodoDialog component */}
       {editDialogOpen && currentEditTodo && (
         <EditTodoDialog
           open={editDialogOpen}

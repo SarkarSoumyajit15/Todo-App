@@ -1,177 +1,217 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import todoService from '../api/todoService';
+import userService from '../api/userService';
+import authService from '../api/authService';
+import tagService from '../api/tagService';
+import { toast } from 'react-hot-toast';
+import { useUserContext } from './UserContext';
 
+
+
+// Create context
 const TodoContext = createContext();
 
-// Mock users data
-const mockUsers = [
-  { id: '1', username: 'john_doe', name: 'John Doe', email: 'john@example.com', avatar: 'https://randomuser.me/api/portraits/men/1.jpg' },
-  { id: '2', username: 'jane_smith', name: 'Jane Smith', email: 'jane@example.com', avatar: 'https://randomuser.me/api/portraits/women/2.jpg' },
-  { id: '3', username: 'alex_wilson', name: 'Alex Wilson', email: 'alex@example.com', avatar: 'https://randomuser.me/api/portraits/men/3.jpg' },
-  { id: '4', username: 'emily_brown', name: 'Emily Brown', email: 'emily@example.com', avatar: 'https://randomuser.me/api/portraits/women/4.jpg' },
-  { id: '5', username: 'michael_davis', name: 'Michael Davis', email: 'michael@example.com', avatar: 'https://randomuser.me/api/portraits/men/5.jpg' },
-];
-
-// Mock tags data
-const mockTags = [
-  { id: '1', name: 'Work', color: '#FF5733', textColor: '#FFFFFF' },
-  { id: '2', name: 'Personal', color: '#33FF57', textColor: '#000000' },
-  { id: '3', name: 'Urgent', color: '#FF3333', textColor: '#FFFFFF' },
-  { id: '4', name: 'Later', color: '#3357FF', textColor: '#FFFFFF' },
-  { id: '5', name: 'Ideas', color: '#F3FF33', textColor: '#000000' },
-];
-
+// Context provider component
 export const TodoProvider = ({ children }) => {
-  // Initialize todos from localStorage or use mock data
-  const [todos, setTodos] = useState(() => {
-    const savedTodos = localStorage.getItem('todos');
-    if (savedTodos) {
-      return JSON.parse(savedTodos);
-    }
-    return [];
-  });
+  const [todos, setTodos] = useState([]);
+  // const [users, setUsers] = useState([]);
+  const {user} = useUserContext();
+  const [tags, setTags] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
-  // Initialize users from localStorage or use mock data
-  const [users, setUsers] = useState(() => {
-    const savedUsers = localStorage.getItem('users');
-    if (savedUsers) {
-      return JSON.parse(savedUsers);
-    }
-    return mockUsers;
-  });
-  
-  // Initialize tags from localStorage or use mock data
-  const [tags, setTags] = useState(() => {
-    const savedTags = localStorage.getItem('tags');
-    if (savedTags) {
-      return JSON.parse(savedTags);
-    }
-    return mockTags;
-  });
-  
-  // Save todos to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('todos', JSON.stringify(todos));
-  }, [todos]);
-  
-  // Save users to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('users', JSON.stringify(users));
-  }, [users]);
-  
-  // Save tags to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('tags', JSON.stringify(tags));
-  }, [tags]);
-  
-  // Filter state
+  // Filters state
   const [filters, setFilters] = useState({
-    priorities: {
-      Low: false,
-      Medium: false,
-      High: false
-    },
-    tags: []
+    userId:null,
+    priorities: { High: false, Medium: false, Low: false },
+    tags: [],
+    search: '',
   });
   
-  // Sort option state
-  const [sortOption, setSortOption] = useState('date-desc');
+  // Fetch data on component mount
+  // Update the useEffect in TodoContext.jsx
   
-  // Add a new todo
-  const addTodo = (todo) => {
-    const newTodo = {
-      ...todo,
-      id: uuidv4(),
-      createdAt: new Date().toISOString(),
-      completed: false
+  useEffect(() => {
+    console.log("Inside TodoContextProvider useEffect");
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Check if user is authenticated
+        // const user = authService.getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
+          
+          // Set the user ID in filters
+          setFilters(prevFilters => ({
+            ...prevFilters,
+            userId: user._id
+          }));
+          
+          // Fetch todos based on current user
+          const todosResponse = await todoService.getAllTodos();
+          // const usersResponse = await userService.getAllUsers();
+          // const tagsResponse = await tagService.getAllTags();
+          
+          setTodos(todosResponse.data.todos || []);
+          // setUsers(usersResponse.data.users || []);
+          // setTags(tagsResponse.data.tags || []);
+        }
+        
+        setLoading(false);
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'An error occurred');
+        setError(err.response?.data?.message || 'An error occurred');
+        setLoading(false);
+      }
     };
-    setTodos([...todos, newTodo]);
+    
+    fetchData();
+  }, []);
+  
+  // Add todo
+  // In your TodoContext.jsx, add this check before any write operations
+  
+  // Update the isViewingMode check
+  const isViewingMode = authService.isViewingAs();
+  
+  // Then in functions like addTodo, updateTodo, deleteTodo, etc.
+  const addTodo = async (todoData) => {
+    if (isViewingMode) {
+      alert('You cannot create todos while viewing another user\'s account');
+      return;
+    }
+    
+    try {
+      const response = await todoService.createTodo(todoData);
+      setTodos([...todos, response.data.todo]);
+      toast.success('Todo added successfully!');
+      return response.data.todo;
+    } catch (err) {
+      
+      toast.error(err.response?.data?.message || 'Failed to add todo');
+      setError(err.response?.data?.message || 'Failed to add todo');
+
+      throw err;
+    }
   };
   
-  // Update an existing todo
-  const updateTodo = (updatedTodo) => {
-    setTodos(todos.map(todo => 
-      todo.id === updatedTodo.id ? updatedTodo : todo
-    ));
+  // Update todo
+  const updateTodo = async (id, todoData) => {
+    if (isViewingMode) {
+      alert('You cannot update todos while viewing another user\'s account');
+      return;
+    }
+    
+    try {
+      const response = await todoService.updateTodo(id, todoData);
+      setTodos(todos.map(todo => todo._id === id ? response.data.todo : todo));
+      toast.success('Todo updated successfully!');
+      return response.data.todo;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update todo');
+      setError(err.response?.data?.message || 'Failed to update todo');
+      throw err;
+    }
   };
   
-  // Delete a todo
-  const deleteTodo = (id) => {
-    setTodos(todos.filter(todo => todo.id !== id));
+  // Delete todo
+  const deleteTodo = async (id) => {
+    if (isViewingMode) {
+      alert('You cannot delete todos while viewing another user\'s account');
+      return;
+    }
+    
+    try {
+      await todoService.deleteTodo(id);
+      setTodos(todos.filter(todo => todo._id !== id));
+      toast.success('Todo deleted successfully!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete todo');
+      setError(err.response?.data?.message || 'Failed to delete todo');
+      throw err;
+    }
+  };
+
+  
+  // Add note to todo
+  const addNote = async (todoId, noteContent) => {
+    try {
+      const response = await todoService.addNote(todoId, noteContent);
+      setTodos(todos.map(todo => todo._id === todoId ? response.data.todo : todo));
+      toast.success('Note added successfully!');
+      return response.data.todo;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to add note');
+      // setError(err.response?.data?.message || 'Failed to add note');
+      throw err;
+    }
   };
   
-  // Toggle todo completion status
-  const toggleTodoComplete = (id) => {
-    setTodos(todos.map(todo => 
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ));
+  // Toggle todo completion
+  const toggleTodoComplete = async (id, completed) => {
+    try {
+      const response = await todoService.toggleComplete(id, completed);
+      setTodos(todos.map(todo => todo._id === id ? response.data.todo : todo));
+      return response.data.todo;
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update todo status');
+      throw err;
+    }
   };
   
-  // Add a new user
-  const addUser = (user) => {
-    const newUser = {
-      ...user,
-      id: uuidv4()
-    };
-    setUsers([...users, newUser]);
+  // Get filtered todos
+  const getFilteredTodos = async () => {
+    try {
+      // If no filters are active, return the current todos
+      const noFiltersActive = 
+        !Object.values(filters.priorities).some(value => value) && 
+        filters.tags.length === 0 && 
+        !filters.search;
+      
+      if (noFiltersActive) {
+        return todos;
+      }
+      
+      // Otherwise, fetch filtered todos from the API
+      console.log("Inside get filtered todos",filters.userId);
+      const response = await todoService.getFilteredTodos(filters);
+      return response.data.todos || [];
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to fetch filtered todos');
+      // setError(err.response?.data?.message || 'Failed to fetch filtered todos');
+      return todos;
+    }
   };
-  
-  // Update an existing user
-  const updateUser = (updatedUser) => {
-    setUsers(users.map(user => 
-      user.id === updatedUser.id ? updatedUser : user
-    ));
-  };
-  
-  // Delete a user
-  const deleteUser = (id) => {
-    setUsers(users.filter(user => user.id !== id));
-  };
-  
-  // Add a new tag
-  const addTag = (tag) => {
-    const newTag = {
-      ...tag,
-      id: uuidv4()
-    };
-    setTags([...tags, newTag]);
-  };
-  
-  // Update an existing tag
-  const updateTag = (updatedTag) => {
-    setTags(tags.map(tag => 
-      tag.id === updatedTag.id ? updatedTag : tag
-    ));
-  };
-  
-  // Delete a tag
-  const deleteTag = (id) => {
-    setTags(tags.filter(tag => tag.id !== id));
-  };
+
+
   
   return (
     <TodoContext.Provider value={{
       todos,
-      users,
-      tags,
+      currentUser,
+      loading,
+      error,
       filters,
       setFilters,
-      sortOption,
-      setSortOption,
       addTodo,
       updateTodo,
       deleteTodo,
+      addNote,
       toggleTodoComplete,
-      addUser,
-      updateUser,
-      deleteUser,
-      addTag,
-      updateTag,
-      deleteTag
+      getFilteredTodos,
     }}>
       {children}
     </TodoContext.Provider>
   );
 };
 
-export const useTodoContext = () => useContext(TodoContext);
+// Custom hook to use the todo context
+export const useTodoContext = () => {
+  const context = useContext(TodoContext);
+  if (!context) {
+    throw new Error('useTodoContext must be used within a TodoProvider');
+  }
+  return context;
+};

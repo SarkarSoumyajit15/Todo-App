@@ -1,6 +1,3 @@
-// const mongoose = require('mongoose');
-// const bcrypt = require('bcryptjs');
-// const validator = require('validator');
 
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';

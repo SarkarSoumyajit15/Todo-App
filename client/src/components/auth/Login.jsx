@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import authService from '../../api/authService';
+import { useUserContext } from '../../context/UserContext';
 
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+
+  const {login} = useUserContext();;
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -22,7 +25,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await authService.login(formData.email, formData.password);
+      await login(formData.email, formData.password);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to login. Please check your credentials.');

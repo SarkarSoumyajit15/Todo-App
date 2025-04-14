@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTodoContext } from '../context/TodoContext';
 import { useTagContext } from '../context/TagContext';
+import { useUserContext } from '../context/UserContext';
 
 const AddTodoModal = ({ onClose, currentUser, isEditing = false, todo = null }) => {
-  const { addTodo, updateTodo, users ,  } = useTodoContext();
+  const { addTodo, updateTodo,  } = useTodoContext();
   const { createTag , tags } = useTagContext();
+  const {users} = useUserContext()
   
   const [title, setTitle] = useState(todo?.title || '');
   const [description, setDescription] = useState(todo?.description || '');

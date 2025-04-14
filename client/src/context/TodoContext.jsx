@@ -21,6 +21,7 @@ export const TodoProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
+  const [sortOption , setSortOption] = useState("");
   // Filters state
   const [filters, setFilters] = useState({
     userId:null,
@@ -28,6 +29,8 @@ export const TodoProvider = ({ children }) => {
     tags: [],
     search: '',
   });
+
+  
   
   // Fetch data on component mount
   // Update the useEffect in TodoContext.jsx
@@ -177,7 +180,7 @@ export const TodoProvider = ({ children }) => {
       // Otherwise, fetch filtered todos from the API
       console.log("Inside get filtered todos",filters.userId);
       const response = await todoService.getFilteredTodos(filters);
-      return response.data.todos || [];
+      return response?.data?.todos || [];
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to fetch filtered todos');
       // setError(err.response?.data?.message || 'Failed to fetch filtered todos');
@@ -185,6 +188,20 @@ export const TodoProvider = ({ children }) => {
     }
   };
 
+  // const getSortedTodos = async() => {
+  //   try {
+  //     if (!sort.sortBy) return todos;
+  //     const response = await todoService.getSortedTodos(sort);
+  //     const sortedTodos = response?.data?.todos || [];
+  //     setTodos(sortedTodos);
+  //     return sortedTodos;
+
+  //   } catch (error) {
+  //     toast.error(error.response?.data?.message || 'Failed to fetch sorted todos');
+  //     setError(error.response?.data?.message || 'Failed to fetch sorted todos');
+  //   }
+
+  // }
 
   
   return (
@@ -194,6 +211,8 @@ export const TodoProvider = ({ children }) => {
       loading,
       error,
       filters,
+      sortOption,
+      setSortOption,
       setFilters,
       addTodo,
       updateTodo,
@@ -201,6 +220,7 @@ export const TodoProvider = ({ children }) => {
       addNote,
       toggleTodoComplete,
       getFilteredTodos,
+
     }}>
       {children}
     </TodoContext.Provider>

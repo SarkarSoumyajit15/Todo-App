@@ -72,7 +72,7 @@ const todoService = {
   },
   
   // Get todos with filters
-  getFilteredTodos: async (filters) => {
+  getFilteredTodos: async (filters ) => {
     const queryParams = new URLSearchParams();
 
     console.log("Inside get filtered todoservice", filters);
@@ -107,10 +107,15 @@ const todoService = {
     if (filters.status) {
       queryParams.append('status', filters.status);
     }
+
+
+
     console.log("Query Params", queryParams.toString());
     const response = await axios.get(`/todos?${queryParams.toString()}`);
     return response.data;
   }
 };
+
+
 
 export default todoService;

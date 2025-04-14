@@ -46,9 +46,9 @@ Protected routes
 Todo Details : 
 - Click to view full details of a todo
 - Add notes through a modal interface
-- List View  : Paginated list of todos [ not implemented yet]
-- Filtering by tags, priority, or mentioned users[ not implimented yet]
-- Sorting by date or priority [ not yet implemented]
+- List View  : Paginated list of todos [done but static]
+- Filtering by tags, priority [done], or mentioned users[ not implimented yet]
+- Sorting by date or priority
 
 Real-time UI updates on changes
 

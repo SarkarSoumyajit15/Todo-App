@@ -7,7 +7,6 @@ const Dashboard = () => {
   const { todos, loading, error  } = useTodoContext();
   const {currentUser} = useUserContext();
   
-  console.log("currentUser", currentUser);
   const [stats, setStats] = useState({
     total: 0,
     completed: 0,
@@ -61,8 +60,8 @@ const Dashboard = () => {
       </div>
       
       <div>
-        <h2 className="text-xl font-semibold mb-4">Recent Tasks</h2>
-        <TodoList limit={5} showViewAll={true} />
+        <h2 className="text-xl font-semibold mb-4">Recent Tasks for me</h2>
+        <TodoList limit={2} showViewAll={true} currentUser={currentUser} />
       </div>
     </div>
   );
